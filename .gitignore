@@ -44,3 +44,12 @@ Thumbs.db
 
 # Additional
 .vsconfig
+
+# Node.js / npm / yarn generated
+package-lock.json
+yarn.lock
+
+# Optional Unity files
+# Unity's Asset Store tools or other optional packages that might not be essential
+*.asset
+*.controller
