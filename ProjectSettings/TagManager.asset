@@ -5,6 +5,9 @@ TagManager:
   serializedVersion: 2
   tags:
   - Planet
+  - Closest_Cube
+  - Furthest_Cube
+  - Sphere
   layers:
   - Default
   - TransparentFX

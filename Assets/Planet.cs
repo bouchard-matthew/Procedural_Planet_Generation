@@ -2,15 +2,15 @@ using UnityEngine;
 
 public class Planet : MonoBehaviour
 {
-    [SerializeField][Range(2, 256)] int resolution = 14;
+    [SerializeField][Range(2, 256)] int resolution = 30;
     [SerializeField, HideInInspector] MeshFilter[] meshFilters;
     TerrainFace[] terrainFaces;
     int numOfFaces = 6;
     [SerializeField] private Material planetMaterial;
-
     [SerializeField] private float planetRadius = 10f;
-
     private bool isInitialized = false;
+    private int[] baseTriangles;
+    private int previousResolution;
 
     private void OnValidate()
     {
@@ -21,13 +21,22 @@ public class Planet : MonoBehaviour
 
         if (meshFilters != null && terrainFaces != null)
         {
+            if (resolution != previousResolution)
+            {
+                Debug.Log("Resolution changed from " + previousResolution + " to " + resolution);
+                CalculateBaseTriangles();
+                previousResolution = resolution;
+            }
+
             GenerateMesh();
             CenterMeshes();
         }
     }
 
+
     private void Start()
     {
+        previousResolution = resolution;
         if (!isInitialized)
         {
             Initialize();
@@ -44,27 +53,49 @@ public class Planet : MonoBehaviour
         }
         terrainFaces = new TerrainFace[numOfFaces];
         Vector3[] directions = { Vector3.up, Vector3.down, Vector3.left, Vector3.right, Vector3.forward, Vector3.back };
+
+        CalculateBaseTriangles();
+
         for (int i = 0; i < numOfFaces; i++)
         {
             if (meshFilters[i] == null)
             {
                 GameObject meshObj = new("mesh");
                 meshObj.transform.parent = transform;
-                meshObj.AddComponent<MeshRenderer>().sharedMaterial = new Material(Shader.Find("Standard"));
+                meshObj.AddComponent<MeshRenderer>().sharedMaterial = planetMaterial;
                 meshFilters[i] = meshObj.AddComponent<MeshFilter>();
                 meshFilters[i].sharedMesh = new Mesh();
             }
-            terrainFaces[i] = new TerrainFace(meshFilters[i].sharedMesh, resolution, directions[i]);
+            terrainFaces[i] = new TerrainFace(meshFilters[i].sharedMesh, directions[i]);
         }
-
         isInitialized = true;
+    }
+
+    void CalculateBaseTriangles()
+    {
+        baseTriangles = new int[(resolution - 1) * (resolution - 1) * 6];
+        int triIndex = 0;
+        for (int y = 0; y < resolution - 1; y++)
+        {
+            for (int x = 0; x < resolution - 1; x++)
+            {
+                int i = x + y * resolution;
+                baseTriangles[triIndex] = i;
+                baseTriangles[triIndex + 1] = i + resolution + 1;
+                baseTriangles[triIndex + 2] = i + resolution;
+                baseTriangles[triIndex + 3] = i;
+                baseTriangles[triIndex + 4] = i + 1;
+                baseTriangles[triIndex + 5] = i + resolution + 1;
+                triIndex += 6;
+            }
+        }
     }
 
     void GenerateMesh()
     {
         foreach (TerrainFace terrainFace in terrainFaces)
         {
-            terrainFace.ConstructMesh();
+            terrainFace.ConstructMesh(resolution, baseTriangles);
         }
 
         // Scale the planet to match the desired radius
@@ -106,5 +137,4 @@ public class Planet : MonoBehaviour
     {
         return planetRadius;
     }
-
 }
