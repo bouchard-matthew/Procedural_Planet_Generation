@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Linq;
+using UnityEngine;
 
 public static class TerrainFaceFactory
 {
@@ -13,6 +14,7 @@ public static class TerrainFaceFactory
     {
         var faces = new TerrainFace[6];
         var meshColliders = new MeshCollider[6];
+        meshFilters = meshFilters == null || meshFilters.Length == 0 ? new MeshFilter[6] : meshFilters;
 
         for (int i = 0; i < 6; i++)
         {

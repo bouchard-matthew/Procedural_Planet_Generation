@@ -7,7 +7,6 @@ public class PlanetEditor : Editor
     Planet Planet;
     Editor ShapeEditor;
     Editor ColorEditor;
-
     public override void OnInspectorGUI()
     {
         using var check = new EditorGUI.ChangeCheckScope();
@@ -19,9 +18,10 @@ public class PlanetEditor : Editor
             }
         }
 
-        if (GUILayout.Button("Generate Planet"))
+        if (GUILayout.Button("Generate Planet") || !Planet.hasBeenInitialized)
         {
             Planet.GeneratePlanet();
+            Planet.hasBeenInitialized = true;
         }
 
         DrawSettingsEditor(Planet.ShapeSettings, Planet.UpdatePlanetShape, ref Planet.IsShapeSettingsFoldoutOpen, ref ShapeEditor);

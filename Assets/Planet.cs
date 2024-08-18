@@ -10,13 +10,16 @@ public class Planet : MonoBehaviour
     private int[] _baseTriangles;
     private ShapeGenerator _shapeGenerator;
 
-    public ShapeSettings ShapeSettings { get; set; }
-    public ColorSettings ColorSettings { get; set; }
+    [SerializeField] public ShapeSettings ShapeSettings;
+    [SerializeField] public ColorSettings ColorSettings;
     public MeshFilter[] MeshFilters => _meshFilters;
     public MeshCollider[] MeshColliders => _meshColliders;
     public TerrainFace[] TerrainFaces => _terrainFaces;
     public int[] BaseTriangles => _baseTriangles;
+
     public bool AutoUpdate = true;
+
+    [HideInInspector] public bool hasBeenInitialized = false;
 
     [HideInInspector] public bool IsShapeSettingsFoldoutOpen = true;
     [HideInInspector] public bool IsColorSettingsFoldoutOpen = true;
@@ -25,36 +28,36 @@ public class Planet : MonoBehaviour
     {
         InitializePlanet();
         GenerateTerrain();
-        MeshGenerationHelper.GenerateMesh(new MeshGenerationParameters(this));
-        MeshGenerationHelper.GenerateMeshColors(MeshFilters, ColorSettings);
-        MeshGenerationHelper.CenterMeshes(TerrainFaces, MeshFilters);
+        UpdatePlanetShape();
+        UpdatePlanetColor();
     }
 
     public void GeneratePlanet()
     {
-        if (ShapeSettings == null || ColorSettings == null || _shapeGenerator == null)
-        {
-            ShapeSettings = ShapeSettings != null ? ShapeSettings : ScriptableObject.CreateInstance<ShapeSettings>();
-            ColorSettings = ColorSettings != null ? ColorSettings : ScriptableObject.CreateInstance<ColorSettings>();
-            _shapeGenerator = new ShapeGenerator(ShapeSettings);
-        }
+        InitializePlanet();
         UpdatePlanetShape();
-        MeshGenerationHelper.GenerateMeshColors(_meshFilters, ColorSettings);
+        UpdatePlanetColor();
     }
 
     private void InitializePlanet()
     {
-        ShapeSettings = ShapeSettings != null ? ShapeSettings : ScriptableObject.CreateInstance<ShapeSettings>();
-        ColorSettings = ColorSettings != null ? ColorSettings : ScriptableObject.CreateInstance<ColorSettings>();
-        _shapeGenerator = new ShapeGenerator(ShapeSettings);
-        _planetMaterial = _planetMaterial != null ? _planetMaterial : new Material(Shader.Find("Standard"));
-        _meshFilters ??= new MeshFilter[6];
+        InitializePlanetShapeColorSettings();
+
+        _meshFilters = _meshFilters == null || _meshFilters.Length == 0 ? new MeshFilter[6] : _meshFilters;
         _meshColliders ??= new MeshCollider[6];
+        _baseTriangles = MeshUtilities.CalculateBaseTriangles(ShapeSettings.Resolution);
+    }
+
+    private void InitializePlanetShapeColorSettings()
+    {
+        ShapeSettings = AssetUtility.CreateOrFetchAsset<ShapeSettings>("Shape.asset");
+        ColorSettings = AssetUtility.CreateOrFetchAsset<ColorSettings>("Color.asset");
+        _planetMaterial = _planetMaterial != null ? _planetMaterial : new Material(Shader.Find("Standard"));
+        _shapeGenerator ??= new ShapeGenerator(ShapeSettings);
     }
 
     private void GenerateTerrain()
     {
-        _meshFilters ??= new MeshFilter[6];
         _shapeGenerator = new ShapeGenerator(ShapeSettings);
         _planetMaterial = _planetMaterial != null ? _planetMaterial : new Material(Shader.Find("Standard"));
 
@@ -68,16 +71,32 @@ public class Planet : MonoBehaviour
         if (AutoUpdate)
         {
             _baseTriangles = MeshUtilities.CalculateBaseTriangles(ShapeSettings.Resolution);
+            _meshFilters = _meshFilters == null || _meshFilters.Length == 0 ? new MeshFilter[6] : _meshFilters;
 
             if (_terrainFaces == null)
             {
                 GenerateTerrain();
             }
 
+            for (int i = 0; i < _meshFilters.Length; i++)
+            {
+                var mesh = Application.isPlaying ? _meshFilters[i].mesh : _meshFilters[i].sharedMesh;
+                mesh ??= new Mesh();
+
+                if (Application.isPlaying)
+                {
+                    _meshFilters[i].mesh = mesh;
+                    return;
+                }
+
+                _meshFilters[i].sharedMesh = mesh;
+            }
+
             MeshGenerationHelper.GenerateMesh(new MeshGenerationParameters(this));
             MeshGenerationHelper.CenterMeshes(_terrainFaces, _meshFilters);
         }
     }
+
 
     public void UpdatePlanetColor()
     {
