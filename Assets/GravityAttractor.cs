@@ -1,23 +1,32 @@
-﻿using UnityEngine;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using UnityEngine;
+
 public class GravityAttractor : MonoBehaviour
 {
-    public float gravity = 9.8f;
-    public float gravitationalReach = 100f;
-    public float stopDistance = 0.1f; // Distance from the surface where attraction stops
-    [SerializeField]
-    public float planetMass = 1000f;
+    [SerializeField] public float planetMass = 1000f;
+    [SerializeField] public float gravity = 9.8f;
+    [SerializeField] public float gravitationalReach = 100f;
+    [SerializeField] public float surfaceOffset = 0.1f;
 
-    private List<GravityBody> affectedBodies = new List<GravityBody>();
-    private Planet planetScript; // Reference to the Planet script
+    private readonly List<GravityBody> affectedBodies = new();
+    private Planet planet;
+    private MeshCollider[] meshColliders;
 
     private void Start()
     {
-        // Get the Planet script component from the same GameObject
-        planetScript = GetComponent<Planet>();
-        if (planetScript == null)
+        if (!TryGetComponent<Planet>(out planet))
         {
-            Debug.LogError("Planet script not found on the same GameObject.");
+            Debug.LogError("Planet script not found on the GravityAttractor GameObject.");
+            enabled = false;
+            return;
+        }
+
+        meshColliders = planet.MeshColliders;
+        if (meshColliders == null || meshColliders.Length == 0)
+        {
+            Debug.LogError("No MeshColliders found on the Planet.");
+            enabled = false;
+            return;
         }
     }
 
@@ -31,34 +40,76 @@ public class GravityAttractor : MonoBehaviour
 
     private void AttractBody(GravityBody body)
     {
-        Rigidbody rbody = body.GetComponent<Rigidbody>();
-        Vector3 direction = (transform.position - rbody.position);
+        Rigidbody rbody = body.Rigidbody;
+        Vector3 direction = transform.position - rbody.position;
         float distance = direction.magnitude;
 
-        // Use the planetRadius from the Planet script
-        float planetRadius = planetScript != null ? planetScript.GetPlanetRadius() : 6f; // Default to 6f if Planet script is not found
-
-        // Calculate the distance from the planet's surface
-        float distanceFromSurfaceWithBody = Physics.CalculateDistanceFromSurface(transform.position, planetRadius, rbody.position, body.GetComponent<Collider>());
-
-        if (distanceFromSurfaceWithBody > stopDistance && distance <= gravitationalReach)
+        if (distance <= gravitationalReach)
         {
-            Vector3 force = Physics.CalculateGravitationalForce(direction, gravity, rbody.mass, planetMass, distance);
-            rbody.AddForce(force);
+            if (IsInsideAnyCollider(rbody.position))
+            {
+                ClampToSurface(rbody);
+            }
+            else
+            {
+                ApplyGravitationalForce(rbody, direction, distance);
+                RotateBodyTowardsPlanet(body, direction);
+            }
 
-            // Align the body with the planet's surface
-            Quaternion targetRotation = Quaternion.FromToRotation(body.transform.up, -direction) * body.transform.rotation;
-            body.transform.rotation = Quaternion.Slerp(body.transform.rotation, targetRotation, Time.fixedDeltaTime * 3.5f);
-
-            // Debug visualization
-            Debug.DrawLine(rbody.position, rbody.position + force.normalized * 5f, Color.red);
-            Debug.DrawLine(rbody.position, transform.position, Color.yellow);
+            DrawDebugLines(rbody, direction);
         }
-        else if (distanceFromSurfaceWithBody <= stopDistance)
+    }
+
+    private bool IsInsideAnyCollider(Vector3 position)
+    {
+        foreach (var collider in meshColliders)
         {
-            rbody.velocity = Vector3.zero;
-            rbody.angularVelocity = Vector3.zero;
+            if (collider.bounds.Contains(position))
+            {
+                return true;
+            }
         }
+        return false;
+    }
+
+    private void ClampToSurface(Rigidbody rbody)
+    {
+        Vector3 direction = (rbody.position - transform.position).normalized;
+        float closestDistance = float.MaxValue;
+        Vector3 closestPoint = Vector3.zero;
+
+        foreach (var collider in meshColliders)
+        {
+            Vector3 point = collider.ClosestPoint(rbody.position);
+            float distance = Vector3.Distance(point, rbody.position);
+            if (distance < closestDistance)
+            {
+                closestDistance = distance;
+                closestPoint = point;
+            }
+        }
+
+        Vector3 surfacePoint = closestPoint + direction * surfaceOffset;
+        rbody.MovePosition(surfacePoint);
+        rbody.velocity = Vector3.zero;
+    }
+
+    private void ApplyGravitationalForce(Rigidbody rbody, Vector3 direction, float distance)
+    {
+        Vector3 force = PlanetPhysics.CalculateGravitationalForce(direction, gravity, rbody.mass, planetMass, distance);
+        rbody.AddForce(force);
+    }
+
+    private void RotateBodyTowardsPlanet(GravityBody body, Vector3 direction)
+    {
+        Quaternion targetRotation = Quaternion.FromToRotation(body.transform.up, -direction) * body.transform.rotation;
+        body.transform.rotation = Quaternion.Slerp(body.transform.rotation, targetRotation, Time.fixedDeltaTime * 3.5f);
+    }
+
+    private void DrawDebugLines(Rigidbody rbody, Vector3 direction)
+    {
+        Debug.DrawLine(rbody.position, rbody.position + direction.normalized * 5f, Color.red);
+        Debug.DrawLine(rbody.position, transform.position, Color.yellow);
     }
 
     public void AddAffectedBody(GravityBody body)

@@ -3,41 +3,40 @@
 [RequireComponent(typeof(Rigidbody))]
 public class GravityBody : MonoBehaviour
 {
-    private Rigidbody rb;
+    public Rigidbody Rigidbody { get; private set; }
     private GravityAttractor attractor;
 
-    void Start()
+    private void Start()
     {
-        rb = GetComponent<Rigidbody>();
-        rb.useGravity = false;
-        rb.constraints = RigidbodyConstraints.FreezeRotation;
+        InitializeRigidbody();
+        FindAndRegisterWithAttractor();
+    }
 
+    private void InitializeRigidbody()
+    {
+        Rigidbody = GetComponent<Rigidbody>();
+        Rigidbody.useGravity = false;
+        Rigidbody.constraints = RigidbodyConstraints.FreezeRotation;
+    }
+
+    private void FindAndRegisterWithAttractor()
+    {
         attractor = FindObjectOfType<GravityAttractor>();
-        if (attractor != null)
-        {
-            attractor.AddAffectedBody(this);
-        }
-        else
-        {
-            Debug.LogWarning("No GravityAttractor found in the scene!");
-        }
+        attractor?.AddAffectedBody(this);
     }
 
-    void OnDestroy()
+    private void OnDestroy()
     {
-        if (attractor != null)
-        {
-            attractor.RemoveAffectedBody(this);
-        }
+        attractor?.RemoveAffectedBody(this);
     }
 
-    void OnDrawGizmos()
+    private void OnDrawGizmos()
     {
-        if (rb != null)
+        if (Rigidbody != null)
         {
             Gizmos.color = Color.green;
             Gizmos.DrawWireSphere(transform.position, 0.5f);
-            Gizmos.DrawRay(transform.position, rb.velocity.normalized * 2f);
+            Gizmos.DrawRay(transform.position, Rigidbody.velocity.normalized * 2f);
         }
     }
 }
