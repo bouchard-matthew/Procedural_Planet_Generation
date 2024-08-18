@@ -14,7 +14,7 @@ public class GravityAttractor : MonoBehaviour
 
     private void Start()
     {
-        if (!TryGetComponent<Planet>(out planet))
+        if (!TryGetComponent(out planet))
         {
             Debug.LogError("Planet script not found on the GravityAttractor GameObject.");
             enabled = false;
@@ -52,7 +52,7 @@ public class GravityAttractor : MonoBehaviour
             }
             else
             {
-                ApplyGravitationalForce(rbody, direction, distance);
+                rbody.AddForce(PlanetPhysics.CalculateGravitationalForce(direction, gravity, rbody.mass, planetMass, distance));
                 RotateBodyTowardsPlanet(body, direction);
             }
 
@@ -92,12 +92,6 @@ public class GravityAttractor : MonoBehaviour
         Vector3 surfacePoint = closestPoint + direction * surfaceOffset;
         rbody.MovePosition(surfacePoint);
         rbody.velocity = Vector3.zero;
-    }
-
-    private void ApplyGravitationalForce(Rigidbody rbody, Vector3 direction, float distance)
-    {
-        Vector3 force = PlanetPhysics.CalculateGravitationalForce(direction, gravity, rbody.mass, planetMass, distance);
-        rbody.AddForce(force);
     }
 
     private void RotateBodyTowardsPlanet(GravityBody body, Vector3 direction)

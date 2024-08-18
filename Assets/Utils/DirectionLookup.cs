@@ -1,13 +1,11 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 
-public class DirectionLookup : MonoBehaviour
+public static class DirectionLookup
 {
-    private readonly Dictionary<Vector3, string> directionMap;
-
-    public DirectionLookup()
+    public static string GetDirectionName(Vector3 direction)
     {
-        directionMap = new Dictionary<Vector3, string>
+        var directionMap = new Dictionary<Vector3, string>
         {
             { Vector3.up, "Up" },
             { Vector3.down, "Down" },
@@ -16,10 +14,7 @@ public class DirectionLookup : MonoBehaviour
             { Vector3.forward, "Forward" },
             { Vector3.back, "Back" }
         };
-    }
 
-    public string GetDirectionName(Vector3 direction)
-    {
         if (directionMap.TryGetValue(direction, out string directionName))
         {
             return directionName;

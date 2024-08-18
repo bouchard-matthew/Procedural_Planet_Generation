@@ -9,41 +9,43 @@ public static class TerrainFaceFactory
     }
 
     private static readonly Vector3[] Directions = { Vector3.up, Vector3.down, Vector3.left, Vector3.right, Vector3.forward, Vector3.back };
-    private static readonly DirectionLookup DirectionLookup = new();
-
-    public static TerrainFaceManager CreateFaces(Material material, Transform parent, MeshFilter[] meshFilters)
+    public static TerrainFaceManager CreateFaces(Material material, Transform parent, MeshFilter[] meshFilters, ShapeGenerator shapeGenerator)
     {
         var faces = new TerrainFace[6];
         var meshColliders = new MeshCollider[6];
 
         for (int i = 0; i < 6; i++)
         {
-            faces[i] = CreateFace(material, parent, meshFilters, i);
-            meshColliders[i] = AddMeshCollider(meshFilters[i]);
+            faces[i] = CreateOrRetrieveFace(material, parent, meshFilters, meshColliders, shapeGenerator, i);
         }
 
         return new TerrainFaceManager { TerrainFaces = faces, MeshColliders = meshColliders };
     }
 
-    private static TerrainFace CreateFace(Material material, Transform parent, MeshFilter[] meshFilters, int index)
+    private static TerrainFace CreateOrRetrieveFace(Material material, Transform parent, MeshFilter[] meshFilters, MeshCollider[] meshColliders, ShapeGenerator shapeGenerator, int index)
     {
         if (meshFilters[index] != null)
         {
-            return new TerrainFace(meshFilters[index].sharedMesh, Directions[index]);
+            return new TerrainFace(meshFilters[index].sharedMesh, Directions[index], shapeGenerator);
         }
 
-        var meshObj = new GameObject($"{DirectionLookup.GetDirectionName(Directions[index])}");
-        meshObj.transform.SetParent(parent, false);
-        meshFilters[index] = meshObj.AddComponent<MeshFilter>();
-        meshFilters[index].sharedMesh = new Mesh();
-        var renderer = meshObj.AddComponent<MeshRenderer>();
-        renderer.sharedMaterial = material;
+        var meshObj = CreateMeshGameObject($"{DirectionLookup.GetDirectionName(Directions[index])}", parent, material);
+        meshFilters[index] = meshObj.GetComponent<MeshFilter>();
+        meshColliders[index] = meshObj.GetComponent<MeshCollider>();
 
-        return new TerrainFace(meshFilters[index].sharedMesh, Directions[index]);
+        return new TerrainFace(meshFilters[index].sharedMesh, Directions[index], shapeGenerator);
     }
 
-    private static MeshCollider AddMeshCollider(MeshFilter meshFilter)
+    private static GameObject CreateMeshGameObject(string name, Transform parent, Material material)
     {
-        return meshFilter.gameObject.AddComponent<MeshCollider>();
+        var meshObj = new GameObject(name);
+        meshObj.transform.SetParent(parent, false);
+        var meshFilter = meshObj.AddComponent<MeshFilter>();
+        meshFilter.sharedMesh = new Mesh();
+        var renderer = meshObj.AddComponent<MeshRenderer>();
+        renderer.sharedMaterial = material;
+        meshObj.AddComponent<MeshCollider>().sharedMesh = meshFilter.sharedMesh;
+
+        return meshObj;
     }
 }

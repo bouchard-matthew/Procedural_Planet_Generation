@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Linq;
+using UnityEngine;
 
 public static class PlanetPhysics
 {
@@ -22,6 +23,11 @@ public static class PlanetPhysics
             SphereCollider sphereCollider => sphereCollider.radius,
             _ => 0f
         };
+    }
+
+    public static Vector3 CalculateCentroid(Vector3[] vertices)
+    {
+        return vertices.Aggregate(Vector3.zero, (current, vertex) => current + vertex) / vertices.Length;
     }
 
     private static float GetBoxColliderExtent(BoxCollider boxCollider, Vector3 direction)

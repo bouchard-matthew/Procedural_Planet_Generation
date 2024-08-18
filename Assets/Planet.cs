@@ -2,59 +2,88 @@ using UnityEngine;
 
 public class Planet : MonoBehaviour
 {
-    [SerializeField, HideInInspector] public MeshFilter[] MeshFilters;
-    [SerializeField, Range(2, 256)] private int resolution = 30;
-    [SerializeField] private float planetRadius = 5;
-    [SerializeField] private Material planetMaterial;
-    public TerrainFace[] TerrainFaces { get; private set; }
-    public int[] BaseTriangles { get; private set; }
-    public MeshCollider[] MeshColliders { get; private set; }
-    public int Resolution
-    {
-        get => resolution;
-        set
-        {
-            resolution = Mathf.Clamp(value, 2, 256);
-            RegeneratePlanet();
-        }
-    }
+    [SerializeField, HideInInspector] private MeshFilter[] _meshFilters;
+    [SerializeField] private Material _planetMaterial;
 
-    public float PlanetRadius
-    {
-        get => planetRadius;
-        set
-        {
-            planetRadius = value;
-            RegeneratePlanet();
-        }
-    }
+    private MeshCollider[] _meshColliders;
+    private TerrainFace[] _terrainFaces;
+    private int[] _baseTriangles;
+    private ShapeGenerator _shapeGenerator;
+
+    public ShapeSettings ShapeSettings { get; set; }
+    public ColorSettings ColorSettings { get; set; }
+    public MeshFilter[] MeshFilters => _meshFilters;
+    public MeshCollider[] MeshColliders => _meshColliders;
+    public TerrainFace[] TerrainFaces => _terrainFaces;
+    public int[] BaseTriangles => _baseTriangles;
+    public bool AutoUpdate = true;
+
+    [HideInInspector] public bool IsShapeSettingsFoldoutOpen = true;
+    [HideInInspector] public bool IsColorSettingsFoldoutOpen = true;
 
     private void Start()
     {
-        Initialize();
-        RegeneratePlanet();
+        InitializePlanet();
+        GenerateTerrain();
+        MeshGenerationHelper.GenerateMesh(new MeshGenerationParameters(this));
+        MeshGenerationHelper.GenerateMeshColors(MeshFilters, ColorSettings);
+        MeshGenerationHelper.CenterMeshes(TerrainFaces, MeshFilters);
     }
 
-    private void Initialize()
+    public void GeneratePlanet()
     {
-        planetMaterial ??= new Material(Shader.Find("Standard"));
-        MeshFilters ??= MeshFilters ?? new MeshFilter[6];
-        MeshColliders ??= MeshColliders ?? new MeshCollider[6];
-
-        var terrainFaceProperties = TerrainFaceFactory.CreateFaces(planetMaterial, transform, MeshFilters);
-        TerrainFaces = terrainFaceProperties.TerrainFaces;
-        MeshColliders = terrainFaceProperties.MeshColliders;
+        if (ShapeSettings == null || ColorSettings == null || _shapeGenerator == null)
+        {
+            ShapeSettings = ShapeSettings != null ? ShapeSettings : ScriptableObject.CreateInstance<ShapeSettings>();
+            ColorSettings = ColorSettings != null ? ColorSettings : ScriptableObject.CreateInstance<ColorSettings>();
+            _shapeGenerator = new ShapeGenerator(ShapeSettings);
+        }
+        UpdatePlanetShape();
+        MeshGenerationHelper.GenerateMeshColors(_meshFilters, ColorSettings);
     }
 
-    private void RegeneratePlanet()
+    private void InitializePlanet()
     {
-        BaseTriangles = PlanetGenerationHelper.CalculateBaseTriangles(Resolution);
-        PlanetGenerationHelper.GeneratePlanet(this);
+        ShapeSettings = ShapeSettings != null ? ShapeSettings : ScriptableObject.CreateInstance<ShapeSettings>();
+        ColorSettings = ColorSettings != null ? ColorSettings : ScriptableObject.CreateInstance<ColorSettings>();
+        _shapeGenerator = new ShapeGenerator(ShapeSettings);
+        _planetMaterial = _planetMaterial != null ? _planetMaterial : new Material(Shader.Find("Standard"));
+        _meshFilters ??= new MeshFilter[6];
+        _meshColliders ??= new MeshCollider[6];
     }
 
-    private void OnValidate()
+    private void GenerateTerrain()
     {
-        Initialize();
-        RegeneratePlanet();
+        _meshFilters ??= new MeshFilter[6];
+        _shapeGenerator = new ShapeGenerator(ShapeSettings);
+        _planetMaterial = _planetMaterial != null ? _planetMaterial : new Material(Shader.Find("Standard"));
+
+        var terrainFaceManager = TerrainFaceFactory.CreateFaces(_planetMaterial, transform, _meshFilters, _shapeGenerator);
+        _terrainFaces = terrainFaceManager.TerrainFaces;
+        _meshColliders = terrainFaceManager.MeshColliders;
+    }
+
+    public void UpdatePlanetShape()
+    {
+        if (AutoUpdate)
+        {
+            _baseTriangles = MeshUtilities.CalculateBaseTriangles(ShapeSettings.Resolution);
+
+            if (_terrainFaces == null)
+            {
+                GenerateTerrain();
+            }
+
+            MeshGenerationHelper.GenerateMesh(new MeshGenerationParameters(this));
+            MeshGenerationHelper.CenterMeshes(_terrainFaces, _meshFilters);
+        }
+    }
+
+    public void UpdatePlanetColor()
+    {
+        if (AutoUpdate)
+        {
+            MeshGenerationHelper.GenerateMeshColors(_meshFilters, ColorSettings);
+        }
     }
 }
