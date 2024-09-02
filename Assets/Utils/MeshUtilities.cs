@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 
 public static class MeshUtilities
 {
@@ -48,5 +49,32 @@ public static class MeshUtilities
         mesh.vertices = vertices;
         mesh.triangles = triangles;
         mesh.RecalculateNormals();
+    }
+
+    public static T GetOrAddComponent<T>(GameObject meshObj) where T : Component
+    {
+        return meshObj.TryGetComponent(out T component) ? component : meshObj.AddComponent<T>();
+    }
+
+    public static T[] EnsureArrayInitialized<T>(T[] array, int length) where T : Component
+    {
+        return array ?? new T[length];
+    }
+
+    public static Mesh ReturnProperFilterMesh(MeshFilter meshFilter)
+    {
+        return meshFilter.sharedMesh != null ? meshFilter.sharedMesh : new Mesh();
+    }
+
+    public static GameObject CreateMeshGameObject(string name, Transform parent, Material material)
+    {
+        var meshObj = new GameObject(name);
+        meshObj.transform.SetParent(parent, false);
+        var meshFilter = meshObj.AddComponent<MeshFilter>();
+        meshFilter.sharedMesh = new Mesh();
+        var meshRenderer = meshObj.AddComponent<MeshRenderer>();
+        meshRenderer.sharedMaterial = material;
+
+        return meshObj;
     }
 }

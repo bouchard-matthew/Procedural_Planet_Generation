@@ -3,8 +3,6 @@ using UnityEngine;
 
 public static class PlanetPhysics
 {
-    private const float PrecisionBuffer = 0.01f;
-
     public static float ReturnUnitRangedValue(float value) => (value - 0.5f) * 2;
 
     public static float CalculateDistanceFromSurface(Vector3 planetPosition, float planetRadius, Vector3 bodyPosition, Collider bodyCollider)
@@ -12,7 +10,7 @@ public static class PlanetPhysics
         Vector3 direction = (bodyPosition - planetPosition).normalized;
         float distance = Vector3.Distance(planetPosition, bodyPosition);
         float bodyExtent = GetFaceExtent(bodyCollider, direction);
-        return distance - planetRadius - bodyExtent - PrecisionBuffer;
+        return distance - planetRadius - bodyExtent;
     }
 
     public static float GetFaceExtent(Collider collider, Vector3 direction)

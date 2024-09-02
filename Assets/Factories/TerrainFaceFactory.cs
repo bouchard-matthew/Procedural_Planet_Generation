@@ -1,27 +1,21 @@
-﻿using System.Linq;
+﻿using System.Xml.Linq;
 using UnityEngine;
 
 public static class TerrainFaceFactory
 {
-    public class TerrainFaceManager
-    {
-        public TerrainFace[] TerrainFaces;
-        public MeshCollider[] MeshColliders;
-    }
-
     private static readonly Vector3[] Directions = { Vector3.up, Vector3.down, Vector3.left, Vector3.right, Vector3.forward, Vector3.back };
-    public static TerrainFaceManager CreateFaces(Material material, Transform parent, MeshFilter[] meshFilters, ShapeGenerator shapeGenerator)
+    public static TerrainFaceManager CreateFaces(Material material, Transform parent, MeshFilter[] meshFilters, MeshCollider[] meshColliders, ShapeGenerator shapeGenerator)
     {
-        var faces = new TerrainFace[6];
-        var meshColliders = new MeshCollider[6];
-        meshFilters = meshFilters == null || meshFilters.Length == 0 ? new MeshFilter[6] : meshFilters;
+        var faces = new TerrainFace[Directions.Length];
+        meshColliders = MeshUtilities.EnsureArrayInitialized(meshColliders, Directions.Length);
+        meshFilters = MeshUtilities.EnsureArrayInitialized(meshFilters, Directions.Length);
 
-        for (int i = 0; i < 6; i++)
+        for (int i = 0; i < faces.Length; i++)
         {
             faces[i] = CreateOrRetrieveFace(material, parent, meshFilters, meshColliders, shapeGenerator, i);
         }
 
-        return new TerrainFaceManager { TerrainFaces = faces, MeshColliders = meshColliders };
+        return new TerrainFaceManager(faces, meshFilters, meshColliders);
     }
 
     private static TerrainFace CreateOrRetrieveFace(Material material, Transform parent, MeshFilter[] meshFilters, MeshCollider[] meshColliders, ShapeGenerator shapeGenerator, int index)
@@ -31,23 +25,17 @@ public static class TerrainFaceFactory
             return new TerrainFace(meshFilters[index].sharedMesh, Directions[index], shapeGenerator);
         }
 
-        var meshObj = CreateMeshGameObject($"{DirectionLookup.GetDirectionName(Directions[index])}", parent, material);
-        meshFilters[index] = meshObj.GetComponent<MeshFilter>();
-        meshColliders[index] = meshObj.GetComponent<MeshCollider>();
+        var meshObj = MeshUtilities.CreateMeshGameObject($"{DirectionLookup.GetDirectionName(Directions[index])}", parent, material);
+        meshFilters[index] = MeshUtilities.GetOrAddComponent<MeshFilter>(meshObj);
+        meshColliders[index] = MeshUtilities.GetOrAddComponent<MeshCollider>(meshObj);
+        meshColliders[index].sharedMesh = meshFilters[index].sharedMesh;
+
+        if (meshColliders[index] == null)
+        {
+            meshColliders[index] = meshFilters[index].gameObject.AddComponent<MeshCollider>();
+            meshColliders[index].sharedMesh = MeshUtilities.ReturnProperFilterMesh(meshFilters[index]);
+        }
 
         return new TerrainFace(meshFilters[index].sharedMesh, Directions[index], shapeGenerator);
-    }
-
-    private static GameObject CreateMeshGameObject(string name, Transform parent, Material material)
-    {
-        var meshObj = new GameObject(name);
-        meshObj.transform.SetParent(parent, false);
-        var meshFilter = meshObj.AddComponent<MeshFilter>();
-        meshFilter.sharedMesh = new Mesh();
-        var renderer = meshObj.AddComponent<MeshRenderer>();
-        renderer.sharedMaterial = material;
-        meshObj.AddComponent<MeshCollider>().sharedMesh = meshFilter.sharedMesh;
-
-        return meshObj;
     }
 }

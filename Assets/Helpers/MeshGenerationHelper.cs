@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-public class MeshGenerationHelper
+public static class MeshGenerationHelper
 {
     public static void GenerateMeshColors(MeshFilter[] meshFilters, ColorSettings colorSettings)
     {
@@ -12,7 +12,10 @@ public class MeshGenerationHelper
 
     private static void ApplyMeshColor(MeshFilter meshFilter, ColorSettings colorSettings)
     {
-        meshFilter.GetComponent<MeshRenderer>().sharedMaterial.color = colorSettings.PlanetColor;
+        if (meshFilter.TryGetComponent(out MeshRenderer renderer))
+        {
+            renderer.sharedMaterial.color = colorSettings.PlanetColor;
+        }
     }
 
     public static void CenterMeshes(TerrainFace[] terrainFaces, MeshFilter[] meshFilters)
@@ -25,9 +28,9 @@ public class MeshGenerationHelper
 
     private static void CenterMesh(MeshFilter filter)
     {
-        Mesh mesh = filter.sharedMesh;
-        Vector3[] vertices = mesh.vertices;
-        Vector3 centroid = PlanetPhysics.CalculateCentroid(vertices);
+        var mesh = filter.sharedMesh;
+        var vertices = mesh.vertices;
+        var centroid = PlanetPhysics.CalculateCentroid(vertices);
 
         for (int j = 0; j < vertices.Length; j++)
         {
@@ -47,10 +50,11 @@ public class MeshGenerationHelper
             return;
         }
 
-        foreach (TerrainFace terrainFace in parameters.TerrainFaces)
+        foreach (var terrainFace in parameters.TerrainFaces)
         {
             terrainFace.ConstructMesh(parameters.ShapeSettings.Resolution, parameters.BaseTriangles);
         }
+
         parameters.Transform.localScale = Vector3.one * parameters.ShapeSettings.PlanetRadius;
     }
 }

@@ -4,45 +4,45 @@ using UnityEngine;
 [CustomEditor(typeof(Planet))]
 public class PlanetEditor : Editor
 {
-    Planet Planet;
-    Editor ShapeEditor;
-    Editor ColorEditor;
+    private Planet planet;
+    private Editor shapeEditor;
+    private Editor colorEditor;
+
     public override void OnInspectorGUI()
     {
-        using var check = new EditorGUI.ChangeCheckScope();
-        using (check) {
+        using (var check = new EditorGUI.ChangeCheckScope())
+        {
             base.OnInspectorGUI();
             if (check.changed)
             {
-                Planet.GeneratePlanet();
+                planet.GeneratePlanet();
             }
         }
 
-        if (GUILayout.Button("Generate Planet") || !Planet.hasBeenInitialized)
+        if (GUILayout.Button("Generate Planet"))
         {
-            Planet.GeneratePlanet();
-            Planet.hasBeenInitialized = true;
+            planet.GeneratePlanet();
         }
 
-        DrawSettingsEditor(Planet.ShapeSettings, Planet.UpdatePlanetShape, ref Planet.IsShapeSettingsFoldoutOpen, ref ShapeEditor);
-        DrawSettingsEditor(Planet.ColorSettings, Planet.UpdatePlanetColor, ref Planet.IsColorSettingsFoldoutOpen, ref ColorEditor);
+        DrawSettingsEditor(planet.ShapeSettings, () => planet.MeshUpdater.UpdateShape(), ref planet.isShapeSettingsFoldoutOpen, ref shapeEditor);
+        DrawSettingsEditor(planet.ColorSettings, () => planet.MeshUpdater.UpdateColor(), ref planet.isColorSettingsFoldoutOpen, ref colorEditor);
     }
 
-    void DrawSettingsEditor(Object settings, System.Action onSettingsUpdated, ref bool toggleFoldout, ref Editor editor)
+    private void DrawSettingsEditor(Object settings, System.Action onSettingsUpdated, ref bool foldout, ref Editor editor)
     {
         if (settings != null)
         {
-            toggleFoldout = EditorGUILayout.InspectorTitlebar(toggleFoldout, settings);
-
-            using var check = new EditorGUI.ChangeCheckScope();
-            if (toggleFoldout)
+            foldout = EditorGUILayout.InspectorTitlebar(foldout, settings);
+            using (var check = new EditorGUI.ChangeCheckScope())
             {
-                CreateCachedEditor(settings, null, ref editor);
-                editor.OnInspectorGUI();
-
-                if (check.changed == true)
+                if (foldout)
                 {
-                    onSettingsUpdated?.Invoke();
+                    CreateCachedEditor(settings, null, ref editor);
+                    editor.OnInspectorGUI();
+                    if (check.changed)
+                    {
+                        onSettingsUpdated?.Invoke();
+                    }
                 }
             }
         }
@@ -50,6 +50,6 @@ public class PlanetEditor : Editor
 
     private void OnEnable()
     {
-        Planet = (Planet)target;
+        planet = (Planet)target;
     }
 }
